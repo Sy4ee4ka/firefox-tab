@@ -1,0 +1,770 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>New Tab</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --bg:      #0A2342;
+      --surface: #0f2e56;
+      --border:  #1d4175;
+      --accent:  #FF7F51;
+      --accent2: #4E937A;
+      --purple:  #662C91;
+      --text:    #F0F4FF;
+      --muted:   #6e8fbf;
+      --danger:  #890620;
+    }
+
+    /* ── BACKGROUND IMAGE ── */
+    #bgLayer {
+      position: fixed; inset: 0;
+      background-size: cover;
+      background-position: center;
+      background-repeat: no-repeat;
+      z-index: 0;
+      opacity: 0;
+      transition: opacity 0.6s;
+    }
+    #bgOverlay {
+      position: fixed; inset: 0;
+      background: rgba(10,35,66,0.72);
+      z-index: 1;
+      opacity: 0;
+      transition: opacity 0.6s;
+    }
+
+    body {
+      background: var(--bg);
+      color: var(--text);
+      font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      padding: 36px 40px 28px;
+      gap: 0;
+      position: relative;
+      z-index: 2;
+    }
+
+    /* ── SCREENSAVER ── */
+    #screensaver {
+      position: fixed; inset: 0;
+      background: #000;
+      z-index: 999;
+      display: none;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+    }
+    #screensaver.active { display: flex; }
+    #screensaverVideo { width: 100%; height: 100%; object-fit: cover; }
+    #screensaverHint {
+      position: absolute;
+      bottom: 32px; left: 50%;
+      transform: translateX(-50%);
+      color: rgba(255,255,255,0.45);
+      font-size: 0.78rem;
+      letter-spacing: 0.05em;
+      pointer-events: none;
+    }
+
+    /* ── SETTINGS BUTTON ── */
+    #settingsBtn {
+      position: fixed;
+      bottom: 20px; right: 20px;
+      width: 38px; height: 38px;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 50%;
+      color: var(--muted);
+      cursor: pointer;
+      display: flex; align-items: center; justify-content: center;
+      z-index: 50;
+      transition: color 0.15s, border-color 0.15s;
+    }
+    #settingsBtn:hover { color: var(--accent); border-color: var(--accent); }
+
+    /* ── HERO ── */
+    .hero {
+      width: 100%;
+      max-width: 720px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 20px;
+      margin-bottom: 32px;
+    }
+
+    .clock-block { text-align: center; line-height: 1; }
+    .clock-block .time {
+      font-size: 5rem;
+      font-weight: 700;
+      letter-spacing: -2px;
+      color: var(--text);
+      text-shadow: 0 2px 20px rgba(0,0,0,0.5);
+    }
+    .clock-block .date {
+      font-size: 1rem;
+      color: var(--accent);
+      margin-top: 6px;
+      font-weight: 500;
+    }
+
+    .search-wrap { width: 100%; position: relative; }
+    .search-wrap input {
+      width: 100%;
+      background: var(--surface);
+      border: 1.5px solid var(--border);
+      border-radius: 16px;
+      padding: 16px 22px 16px 54px;
+      color: var(--text);
+      font-size: 1.1rem;
+      outline: none;
+      transition: border-color 0.2s, box-shadow 0.2s;
+    }
+    .search-wrap input:focus {
+      border-color: var(--accent);
+      box-shadow: 0 0 0 3px rgba(255,127,81,0.18);
+    }
+    .search-wrap input::placeholder { color: var(--muted); }
+    .search-icon {
+      position: absolute; left: 18px; top: 50%;
+      transform: translateY(-50%);
+      color: var(--muted); pointer-events: none;
+    }
+
+    .phrase-bar {
+      width: 100%;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 14px;
+      padding: 14px 20px;
+      display: flex; align-items: center; gap: 12px;
+    }
+    .phrase-icon { color: var(--accent); flex-shrink: 0; }
+    .phrase-text { flex: 1; font-size: 0.88rem; font-style: italic; color: var(--text); line-height: 1.5; }
+    .phrase-btn {
+      background: none; border: none;
+      color: var(--accent); cursor: pointer;
+      font-size: 0.78rem; font-weight: 600;
+      white-space: nowrap; padding: 0;
+      transition: opacity 0.15s;
+    }
+    .phrase-btn:hover { opacity: 0.7; }
+
+    /* ── WIDGETS ── */
+    .widgets {
+      width: 100%;
+      display: grid;
+      grid-template-columns: 1fr 1.2fr 1fr;
+      grid-template-rows: auto auto;
+      gap: 16px;
+      align-items: start;
+    }
+
+    .card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 16px;
+      padding: 18px;
+    }
+    .card-title {
+      font-size: 0.75rem; font-weight: 700;
+      text-transform: uppercase; letter-spacing: 0.09em;
+      color: var(--muted); margin-bottom: 14px;
+      display: flex; align-items: center; justify-content: space-between;
+    }
+    .card-title-icon-btn {
+      background: none; border: none;
+      color: var(--muted); cursor: pointer; padding: 0;
+      display: flex; align-items: center; transition: color 0.15s;
+    }
+    .card-title-icon-btn:hover { color: var(--accent); }
+
+    /* Quick Links */
+    .links-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
+    .link-tile {
+      display: flex; flex-direction: column; align-items: center; gap: 6px;
+      padding: 10px 6px; border-radius: 10px; border: 1px solid var(--border);
+      text-decoration: none; color: var(--text); font-size: 0.7rem;
+      cursor: pointer; background: transparent; position: relative;
+      transition: background 0.15s, border-color 0.15s, transform 0.1s;
+    }
+    .link-tile:hover { background: rgba(255,127,81,0.12); border-color: var(--accent); transform: translateY(-2px); }
+    .link-tile .favicon { width: 24px; height: 24px; border-radius: 6px; object-fit: cover; background: var(--border); }
+    .link-tile span { text-align: center; word-break: break-word; line-height: 1.2; }
+    .del-btn {
+      position: absolute; top: 3px; right: 3px;
+      width: 14px; height: 14px;
+      background: var(--danger); border: none; border-radius: 50%;
+      color: white; font-size: 9px; display: none;
+      align-items: center; justify-content: center; cursor: pointer; line-height: 1;
+    }
+    .link-tile:hover .del-btn { display: flex; }
+    .add-link-tile {
+      display: flex; flex-direction: column; align-items: center; gap: 6px;
+      padding: 10px 6px; border-radius: 10px;
+      border: 1px dashed var(--border); color: var(--muted);
+      font-size: 0.7rem; cursor: pointer; transition: border-color 0.15s, color 0.15s;
+    }
+    .add-link-tile:hover { border-color: var(--accent); color: var(--accent); }
+
+    /* Calendar */
+    .cal-card { grid-column: 1; grid-row: 2; }
+    .cal-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 10px; }
+    .cal-nav { background: none; border: none; color: var(--muted); cursor: pointer; font-size: 0.8rem; padding: 2px 6px; border-radius: 5px; transition: color 0.15s; }
+    .cal-nav:hover { color: var(--accent); }
+    .cal-month-label { font-size: 0.8rem; font-weight: 600; color: var(--text); }
+    .cal-grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 2px; text-align: center; }
+    .cal-grid .day-name { font-size: 0.58rem; color: var(--muted); padding: 3px 0; text-transform: uppercase; }
+    .cal-grid .day { font-size: 0.72rem; padding: 4px 2px; border-radius: 6px; cursor: pointer; transition: background 0.1s; color: var(--text); }
+    .cal-grid .day:hover { background: rgba(255,127,81,0.18); }
+    .cal-grid .day.today { background: var(--accent); color: #0A2342; font-weight: 700; }
+    .cal-grid .day.other-month { color: var(--border); }
+    .cal-grid .day.selected { outline: 1.5px solid var(--accent); }
+
+    /* To-Do */
+    .todo-card { grid-column: 2; grid-row: 1 / 3; }
+    .todo-input-row { display: flex; gap: 8px; margin-bottom: 12px; }
+    .todo-input-row input {
+      flex: 1; background: var(--bg); border: 1px solid var(--border);
+      border-radius: 10px; padding: 9px 12px; color: var(--text);
+      font-size: 0.85rem; outline: none; transition: border-color 0.2s;
+    }
+    .todo-input-row input:focus { border-color: var(--accent); }
+    .todo-input-row input::placeholder { color: var(--muted); }
+    .todo-add-btn {
+      background: var(--accent); border: none; border-radius: 10px;
+      color: #0A2342; padding: 9px 14px; cursor: pointer;
+      font-size: 1.1rem; font-weight: 700; transition: opacity 0.15s;
+      display: flex; align-items: center; justify-content: center;
+    }
+    .todo-add-btn:hover { opacity: 0.85; }
+    .todo-list { display: flex; flex-direction: column; gap: 6px; max-height: 340px; overflow-y: auto; }
+    .todo-list::-webkit-scrollbar { width: 4px; }
+    .todo-list::-webkit-scrollbar-thumb { background: var(--border); border-radius: 4px; }
+    .todo-item { display: flex; align-items: center; gap: 10px; padding: 9px 12px; background: var(--bg); border: 1px solid var(--border); border-radius: 10px; font-size: 0.85rem; }
+    .todo-item.done .todo-text { text-decoration: line-through; color: var(--muted); }
+    .todo-check { width: 17px; height: 17px; border: 2px solid var(--border); border-radius: 5px; display: flex; align-items: center; justify-content: center; cursor: pointer; flex-shrink: 0; transition: background 0.15s, border-color 0.15s; }
+    .todo-item.done .todo-check { background: var(--accent2); border-color: var(--accent2); }
+    .todo-check svg { display: none; }
+    .todo-item.done .todo-check svg { display: block; }
+    .todo-text { flex: 1; }
+    .todo-del { background: none; border: none; color: var(--border); cursor: pointer; font-size: 1rem; line-height: 1; padding: 0 2px; transition: color 0.15s; }
+    .todo-del:hover { color: var(--danger); }
+    .todo-empty { text-align: center; color: var(--muted); font-size: 0.8rem; padding: 18px; }
+
+    /* Quick Note */
+    .note-card { grid-column: 3; grid-row: 1 / 3; }
+    .note-textarea {
+      width: 100%; min-height: 260px; background: var(--bg);
+      border: 1px solid var(--border); border-radius: 10px;
+      padding: 12px; color: var(--text); font-size: 0.85rem;
+      font-family: inherit; resize: vertical; outline: none;
+      line-height: 1.6; transition: border-color 0.2s;
+    }
+    .note-textarea:focus { border-color: var(--accent); }
+    .note-textarea::placeholder { color: var(--muted); }
+    .note-saved { font-size: 0.68rem; color: var(--muted); margin-top: 6px; text-align: right; height: 14px; transition: opacity 0.4s; }
+
+    /* ── MODALS ── */
+    .modal-overlay {
+      position: fixed; inset: 0;
+      background: rgba(0,0,0,0.55);
+      display: none; align-items: center; justify-content: center;
+      z-index: 200;
+    }
+    .modal-overlay.open { display: flex; }
+    .modal {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 16px; padding: 28px;
+      width: 380px; display: flex; flex-direction: column; gap: 14px;
+    }
+    .modal h3 { font-size: 1rem; color: var(--text); }
+    .modal label { font-size: 0.78rem; color: var(--muted); display: block; margin-bottom: 4px; }
+    .modal input[type=text] {
+      background: var(--bg); border: 1px solid var(--border);
+      border-radius: 10px; padding: 10px 14px; color: var(--text);
+      font-size: 0.88rem; outline: none; width: 100%;
+      transition: border-color 0.2s;
+    }
+    .modal input[type=text]:focus { border-color: var(--accent); }
+    .modal input[type=range] { width: 100%; accent-color: var(--accent); cursor: pointer; }
+    .modal-row { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
+    .toggle { position: relative; width: 36px; height: 20px; }
+    .toggle input { opacity: 0; width: 0; height: 0; }
+    .toggle-slider {
+      position: absolute; inset: 0;
+      background: var(--border); border-radius: 20px; cursor: pointer;
+      transition: background 0.2s;
+    }
+    .toggle-slider::before {
+      content: ''; position: absolute;
+      width: 14px; height: 14px; left: 3px; top: 3px;
+      background: white; border-radius: 50%;
+      transition: transform 0.2s;
+    }
+    .toggle input:checked + .toggle-slider { background: var(--accent); }
+    .toggle input:checked + .toggle-slider::before { transform: translateX(16px); }
+    .modal-btns { display: flex; gap: 8px; justify-content: flex-end; }
+    .btn { padding: 9px 18px; border-radius: 10px; border: none; cursor: pointer; font-size: 0.85rem; transition: opacity 0.15s; }
+    .btn-primary { background: var(--accent); color: #0A2342; font-weight: 600; }
+    .btn-primary:hover { opacity: 0.85; }
+    .btn-ghost { background: var(--border); color: var(--text); }
+    .btn-ghost:hover { opacity: 0.8; }
+    .hint-text { font-size: 0.72rem; color: var(--muted); line-height: 1.5; }
+    .divider { border: none; border-top: 1px solid var(--border); margin: 2px 0; }
+  </style>
+</head>
+<body>
+
+  <div id="bgLayer"></div>
+  <div id="bgOverlay"></div>
+
+  <!-- SCREENSAVER -->
+  <div id="screensaver">
+    <video id="screensaverVideo" loop muted playsinline></video>
+    <div id="screensaverHint">Click or press any key to continue</div>
+  </div>
+
+  <!-- SETTINGS BUTTON -->
+  <button id="settingsBtn" title="Settings">
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+      <circle cx="12" cy="12" r="3"/>
+      <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/>
+    </svg>
+  </button>
+
+  <!-- HERO -->
+  <div class="hero">
+    <div class="clock-block">
+      <div class="time" id="clock">00:00</div>
+      <div class="date" id="datestr">Loading…</div>
+    </div>
+    <div class="search-wrap">
+      <svg class="search-icon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/>
+      </svg>
+      <input id="searchInput" type="text" placeholder="Search the web…" autocomplete="off" />
+    </div>
+    <div class="phrase-bar">
+      <svg class="phrase-icon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/>
+      </svg>
+      <div class="phrase-text" id="phraseText">Loading…</div>
+      <button class="phrase-btn" id="phraseBtn">Get inspired</button>
+    </div>
+  </div>
+
+  <!-- WIDGETS -->
+  <div class="widgets">
+    <div class="card" style="grid-column:1; grid-row:1;">
+      <div class="card-title">
+        Quick Links
+        <button class="card-title-icon-btn" id="openModalBtn" title="Add link">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+            <line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/>
+          </svg>
+        </button>
+      </div>
+      <div class="links-grid" id="linksGrid"></div>
+    </div>
+
+    <div class="card cal-card">
+      <div class="cal-header">
+        <button class="cal-nav" id="calPrev">&#8592;</button>
+        <span class="cal-month-label" id="calMonth"></span>
+        <button class="cal-nav" id="calNext">&#8594;</button>
+      </div>
+      <div class="cal-grid" id="calGrid"></div>
+    </div>
+
+    <div class="card todo-card">
+      <div class="card-title">To-Do List</div>
+      <div class="todo-input-row">
+        <input id="todoInput" type="text" placeholder="Add a task…" />
+        <button class="todo-add-btn" id="todoAddBtn">+</button>
+      </div>
+      <div class="todo-list" id="todoList"></div>
+    </div>
+
+    <div class="card note-card">
+      <div class="card-title">
+        <span>
+          <svg style="vertical-align:-3px;margin-right:5px;" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/>
+          </svg>
+          Quick Note
+        </span>
+      </div>
+      <textarea id="noteArea" class="note-textarea" placeholder="Jot down your thoughts…"></textarea>
+      <div class="note-saved" id="noteSaved"></div>
+    </div>
+  </div>
+
+  <!-- ADD LINK MODAL -->
+  <div class="modal-overlay" id="modalOverlay">
+    <div class="modal">
+      <h3>Add Quick Link</h3>
+      <div><label>Name</label><input id="modalName" type="text" placeholder="e.g. GitHub" /></div>
+      <div><label>URL</label><input id="modalUrl" type="text" placeholder="e.g. https://github.com" /></div>
+      <div class="modal-btns">
+        <button class="btn btn-ghost" id="modalCancel">Cancel</button>
+        <button class="btn btn-primary" id="modalSave">Add</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- SETTINGS MODAL -->
+  <div class="modal-overlay" id="settingsOverlay">
+    <div class="modal">
+      <h3>⚙️ Settings</h3>
+      <hr class="divider" />
+      <div class="card-title" style="margin-bottom:0;">Background Image</div>
+      <div class="modal-row">
+        <span style="font-size:0.82rem;">Enable background</span>
+        <label class="toggle"><input type="checkbox" id="bgEnabled" /><span class="toggle-slider"></span></label>
+      </div>
+      <div>
+        <label>Image filename (same folder as index.html in your repo)</label>
+        <input type="text" id="bgFilename" placeholder="background.png" />
+      </div>
+      <div>
+        <label>Overlay darkness — <span id="overlayVal">72</span>%</label>
+        <input type="range" id="overlayOpacity" min="0" max="95" step="1" value="72" />
+      </div>
+      <hr class="divider" />
+      <div class="card-title" style="margin-bottom:0;">Screensaver</div>
+      <div class="modal-row">
+        <span style="font-size:0.82rem;">Enable screensaver</span>
+        <label class="toggle"><input type="checkbox" id="ssEnabled" /><span class="toggle-slider"></span></label>
+      </div>
+      <div>
+        <label>Video filename (same folder as index.html in your repo)</label>
+        <input type="text" id="ssFilename" placeholder="screensaver.mp4" />
+      </div>
+      <div>
+        <label>Idle timeout — <span id="ssTimeoutVal">60</span>s</label>
+        <input type="range" id="ssTimeout" min="10" max="300" step="5" value="60" />
+      </div>
+      <p class="hint-text">📁 Files must be committed to your GitHub repo. Just type the filename — no path needed.</p>
+      <div class="modal-btns">
+        <button class="btn btn-ghost" id="settingsCancel">Cancel</button>
+        <button class="btn btn-primary" id="settingsSave">Save</button>
+      </div>
+    </div>
+  </div>
+
+<script>
+// ── STORE ────────────────────────────────────────────────────
+const S = {
+  get(k, fb) { try { const v = localStorage.getItem(k); return v !== null ? JSON.parse(v) : fb; } catch { return fb; } },
+  set(k, v)  { try { localStorage.setItem(k, JSON.stringify(v)); } catch {} }
+};
+
+// ── PHRASES ──────────────────────────────────────────────────
+const PHRASES = [
+  "Today's agenda: coffee, pretend to work, repeat.",
+  "You are one tab away from greatness. Maybe.",
+  "Technically, you're already multitasking just by breathing.",
+  "The meeting could have been this tab.",
+  "Error 404: Motivation not found. Ctrl+Z?",
+  "Your brain has 86 billion neurons. Use three.",
+  "Somewhere, a rubber duck is judging your code.",
+  "Today's forecast: mild procrastination with a chance of productivity.",
+  "You opened this tab with intent. Bold move.",
+  "The only bug is the human behind the keyboard.",
+  "Progress is just distraction with better PR.",
+  "If debugging is removing bugs, coding is adding them.",
+  "Your future self will thank you. Or blame you.",
+  "A task a day keeps the backlog okay. (Not really.)",
+  "Caffeine: the original productivity hack.",
+  "Opening this tab was the easy part.",
+  "You're doing great. (The bar, however, is on the floor.)",
+  "Multitasking: failing at multiple things simultaneously.",
+  "This tab sponsored by good intentions.",
+  "Achievement unlocked: opened a new tab.",
+];
+let pIdx = Math.floor(Math.random() * PHRASES.length);
+function showPhrase() { document.getElementById('phraseText').textContent = '"' + PHRASES[pIdx++ % PHRASES.length] + '"'; }
+document.getElementById('phraseBtn').addEventListener('click', showPhrase);
+showPhrase();
+
+// ── CLOCK ────────────────────────────────────────────────────
+const DAYS   = ['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'];
+const MONTHS = ['January','February','March','April','May','June','July','August','September','October','November','December'];
+function tick() {
+  const n = new Date();
+  document.getElementById('clock').textContent = String(n.getHours()).padStart(2,'0') + ':' + String(n.getMinutes()).padStart(2,'0');
+  document.getElementById('datestr').textContent = DAYS[n.getDay()] + ', ' + MONTHS[n.getMonth()] + ' ' + n.getDate() + ', ' + n.getFullYear();
+}
+tick();
+setInterval(tick, 1000);
+
+// ── SEARCH ───────────────────────────────────────────────────
+document.getElementById('searchInput').addEventListener('keydown', function(e) {
+  if (e.key === 'Enter') {
+    var q = e.target.value.trim();
+    if (q) window.location.href = 'https://www.google.com/search?q=' + encodeURIComponent(q);
+  }
+});
+window.addEventListener('load', function() { document.getElementById('searchInput').focus(); });
+
+// ── BACKGROUND ───────────────────────────────────────────────
+var bgLayer   = document.getElementById('bgLayer');
+var bgOverlay = document.getElementById('bgOverlay');
+
+function applyBackground() {
+  var enabled  = S.get('bg_enabled', false);
+  var filename = S.get('bg_filename', 'background.png');
+  var opacity  = S.get('bg_opacity', 72);
+  if (enabled && filename) {
+    bgLayer.style.backgroundImage = "url('" + filename + "')";
+    bgLayer.style.opacity = '1';
+    bgOverlay.style.background = 'rgba(10,35,66,' + (opacity / 100) + ')';
+    bgOverlay.style.opacity = '1';
+    document.body.style.background = 'transparent';
+  } else {
+    bgLayer.style.opacity = '0';
+    bgOverlay.style.opacity = '0';
+    document.body.style.background = 'var(--bg)';
+  }
+}
+applyBackground();
+
+// ── SCREENSAVER ──────────────────────────────────────────────
+var ssEl    = document.getElementById('screensaver');
+var ssVideo = document.getElementById('screensaverVideo');
+var ssTimer = null;
+var ssActive = false;
+
+function getSSTimeout() { return S.get('ss_timeout', 60) * 1000; }
+
+function showScreensaver() {
+  if (!S.get('ss_enabled', false)) return;
+  var filename = S.get('ss_filename', 'screensaver.mp4');
+  if (!filename) return;
+  ssVideo.src = filename;
+  ssVideo.load();
+  ssVideo.play().catch(function() {});
+  ssEl.classList.add('active');
+  ssActive = true;
+}
+
+function hideScreensaver() {
+  ssEl.classList.remove('active');
+  ssVideo.pause();
+  ssVideo.src = '';
+  ssActive = false;
+  resetSSTimer();
+}
+
+function resetSSTimer() {
+  clearTimeout(ssTimer);
+  if (S.get('ss_enabled', false)) {
+    ssTimer = setTimeout(showScreensaver, getSSTimeout());
+  }
+}
+
+ssEl.addEventListener('click', hideScreensaver);
+document.addEventListener('keydown', function(e) {
+  if (ssActive) { hideScreensaver(); return; }
+  resetSSTimer();
+});
+['mousemove','mousedown','touchstart','scroll'].forEach(function(evt) {
+  document.addEventListener(evt, function() { if (!ssActive) resetSSTimer(); }, { passive: true });
+});
+resetSSTimer();
+
+// ── QUICK LINKS ──────────────────────────────────────────────
+var links = S.get('nt_links', [
+  { name: 'GitHub',  url: 'https://github.com' },
+  { name: 'YouTube', url: 'https://youtube.com' },
+  { name: 'Gmail',   url: 'https://mail.google.com' },
+  { name: 'Reddit',  url: 'https://reddit.com' },
+  { name: 'Twitter', url: 'https://x.com' },
+]);
+
+function faviconUrl(url) {
+  try { return 'https://www.google.com/s2/favicons?sz=64&domain=' + new URL(url).hostname; } catch { return ''; }
+}
+
+function renderLinks() {
+  var g = document.getElementById('linksGrid');
+  g.innerHTML = '';
+  links.forEach(function(lk, i) {
+    var a = document.createElement('a');
+    a.className = 'link-tile';
+    a.href = lk.url;
+    a.innerHTML = '<img class="favicon" src="' + faviconUrl(lk.url) + '" alt="" onerror="this.style.display=\'none\'" /><span>' + lk.name + '</span><button class="del-btn" title="Remove">\u00d7</button>';
+    a.querySelector('.del-btn').addEventListener('click', function(e) {
+      e.preventDefault(); e.stopPropagation();
+      links.splice(i, 1); S.set('nt_links', links); renderLinks();
+    });
+    g.appendChild(a);
+  });
+  var add = document.createElement('div');
+  add.className = 'add-link-tile';
+  add.innerHTML = '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg><span>Add</span>';
+  add.addEventListener('click', openLinkModal);
+  g.appendChild(add);
+}
+renderLinks();
+
+var linkOverlay = document.getElementById('modalOverlay');
+function openLinkModal() {
+  linkOverlay.classList.add('open');
+  document.getElementById('modalName').value = '';
+  document.getElementById('modalUrl').value = '';
+  setTimeout(function() { document.getElementById('modalName').focus(); }, 50);
+}
+document.getElementById('openModalBtn').addEventListener('click', openLinkModal);
+document.getElementById('modalCancel').addEventListener('click', function() { linkOverlay.classList.remove('open'); });
+document.getElementById('modalSave').addEventListener('click', function() {
+  var name = document.getElementById('modalName').value.trim();
+  var url  = document.getElementById('modalUrl').value.trim();
+  if (!name || !url) return;
+  if (!/^https?:\/\//i.test(url)) url = 'https://' + url;
+  links.push({ name: name, url: url });
+  S.set('nt_links', links); renderLinks(); linkOverlay.classList.remove('open');
+});
+linkOverlay.addEventListener('click', function(e) { if (e.target === linkOverlay) linkOverlay.classList.remove('open'); });
+
+// ── SETTINGS ─────────────────────────────────────────────────
+var settingsOverlay = document.getElementById('settingsOverlay');
+
+function openSettings() {
+  document.getElementById('bgEnabled').checked = S.get('bg_enabled', false);
+  document.getElementById('bgFilename').value  = S.get('bg_filename', 'background.png');
+  var op = S.get('bg_opacity', 72);
+  document.getElementById('overlayOpacity').value = op;
+  document.getElementById('overlayVal').textContent = op;
+
+  document.getElementById('ssEnabled').checked = S.get('ss_enabled', false);
+  document.getElementById('ssFilename').value  = S.get('ss_filename', 'screensaver.mp4');
+  var st = S.get('ss_timeout', 60);
+  document.getElementById('ssTimeout').value = st;
+  document.getElementById('ssTimeoutVal').textContent = st;
+
+  settingsOverlay.classList.add('open');
+}
+
+document.getElementById('overlayOpacity').addEventListener('input', function(e) {
+  document.getElementById('overlayVal').textContent = e.target.value;
+});
+document.getElementById('ssTimeout').addEventListener('input', function(e) {
+  document.getElementById('ssTimeoutVal').textContent = e.target.value;
+});
+
+document.getElementById('settingsBtn').addEventListener('click', openSettings);
+document.getElementById('settingsCancel').addEventListener('click', function() { settingsOverlay.classList.remove('open'); });
+settingsOverlay.addEventListener('click', function(e) { if (e.target === settingsOverlay) settingsOverlay.classList.remove('open'); });
+
+document.getElementById('settingsSave').addEventListener('click', function() {
+  S.set('bg_enabled',  document.getElementById('bgEnabled').checked);
+  S.set('bg_filename', document.getElementById('bgFilename').value.trim() || 'background.png');
+  S.set('bg_opacity',  parseInt(document.getElementById('overlayOpacity').value));
+  S.set('ss_enabled',  document.getElementById('ssEnabled').checked);
+  S.set('ss_filename', document.getElementById('ssFilename').value.trim() || 'screensaver.mp4');
+  S.set('ss_timeout',  parseInt(document.getElementById('ssTimeout').value));
+  applyBackground();
+  resetSSTimer();
+  settingsOverlay.classList.remove('open');
+});
+
+// ── TO-DO ─────────────────────────────────────────────────────
+var todos = S.get('nt_todos', []);
+function renderTodos() {
+  var list = document.getElementById('todoList');
+  list.innerHTML = '';
+  if (!todos.length) { list.innerHTML = '<div class="todo-empty">No tasks yet. Add one above!</div>'; return; }
+  todos.forEach(function(t, i) {
+    var el = document.createElement('div');
+    el.className = 'todo-item' + (t.done ? ' done' : '');
+    el.innerHTML = '<div class="todo-check"><svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="#F0F4FF" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg></div><span class="todo-text">' + t.text + '</span><button class="todo-del" title="Delete">\u00d7</button>';
+    el.querySelector('.todo-check').addEventListener('click', function() { todos[i].done = !todos[i].done; S.set('nt_todos', todos); renderTodos(); });
+    el.querySelector('.todo-del').addEventListener('click', function() { todos.splice(i, 1); S.set('nt_todos', todos); renderTodos(); });
+    list.appendChild(el);
+  });
+}
+renderTodos();
+
+function addTodo() {
+  var inp = document.getElementById('todoInput');
+  var t   = inp.value.trim();
+  if (!t) return;
+  todos.unshift({ text: t, done: false });
+  S.set('nt_todos', todos); renderTodos(); inp.value = '';
+}
+document.getElementById('todoAddBtn').addEventListener('click', addTodo);
+document.getElementById('todoInput').addEventListener('keydown', function(e) { if (e.key === 'Enter') addTodo(); });
+
+// ── QUICK NOTE ────────────────────────────────────────────────
+var noteArea  = document.getElementById('noteArea');
+var noteSaved = document.getElementById('noteSaved');
+noteArea.value = S.get('nt_note', '');
+var saveTimer;
+noteArea.addEventListener('input', function() {
+  clearTimeout(saveTimer);
+  saveTimer = setTimeout(function() {
+    S.set('nt_note', noteArea.value);
+    noteSaved.style.opacity = '1';
+    noteSaved.textContent = 'Saved';
+    setTimeout(function() { noteSaved.style.opacity = '0'; }, 1500);
+  }, 600);
+});
+
+// close modals on Escape
+document.addEventListener('keydown', function(e) {
+  if (e.key === 'Escape') {
+    linkOverlay.classList.remove('open');
+    settingsOverlay.classList.remove('open');
+  }
+});
+
+// ── CALENDAR ──────────────────────────────────────────────────
+var today = new Date();
+var calY  = today.getFullYear();
+var calM  = today.getMonth();
+var SHORT_MONTHS = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+
+function renderCal() {
+  document.getElementById('calMonth').textContent = SHORT_MONTHS[calM] + ' ' + calY;
+  var g = document.getElementById('calGrid');
+  g.innerHTML = '';
+  ['S','M','T','W','T','F','S'].forEach(function(d) {
+    var el = document.createElement('div'); el.className = 'day-name'; el.textContent = d; g.appendChild(el);
+  });
+  var first = new Date(calY, calM, 1).getDay();
+  var dim   = new Date(calY, calM + 1, 0).getDate();
+  var prev  = new Date(calY, calM, 0).getDate();
+  for (var i = 0; i < first; i++) {
+    var e = document.createElement('div'); e.className = 'day other-month'; e.textContent = prev - first + 1 + i; g.appendChild(e);
+  }
+  for (var d = 1; d <= dim; d++) {
+    var e = document.createElement('div'); e.className = 'day';
+    if (d === today.getDate() && calM === today.getMonth() && calY === today.getFullYear()) e.classList.add('today');
+    e.textContent = d;
+    e.addEventListener('click', function() {
+      document.querySelectorAll('.cal-grid .day').forEach(function(x) { x.classList.remove('selected'); });
+      this.classList.add('selected');
+    });
+    g.appendChild(e);
+  }
+  var rem = 42 - first - dim;
+  for (var i = 1; i <= rem; i++) {
+    var e = document.createElement('div'); e.className = 'day other-month'; e.textContent = i; g.appendChild(e);
+  }
+}
+renderCal();
+document.getElementById('calPrev').addEventListener('click', function() { calM--; if (calM < 0) { calM = 11; calY--; } renderCal(); });
+document.getElementById('calNext').addEventListener('click', function() { calM++; if (calM > 11) { calM = 0; calY++; } renderCal(); });
+</script>
+</body>
+</html>
